@@ -17,8 +17,15 @@
 
 #ifdef ENCODER_ENABLE
 #    include "encoder.h"
-static pin_t encoders_pad[] = ENCODERS_PAD_A;
-#    define NUMBER_OF_ENCODERS (sizeof(encoders_pad) / sizeof(pin_t))
+    #if (defined(ENCODERS_PAD_A) && defined(ENCODERS_PAD_B))
+        static pin_t encoders_pad[] = ENCODERS_PAD_A;
+        #define NUMBER_OF_ENCODERS (sizeof(encoders_pad) / sizeof(pin_t))
+        #define encoder_transport_enable
+    #elif defined(MATRIX_ENCODER_PINS_ABC_RIGHT)
+        static pin_t matrix_encoders_pins_right[][3] = MATRIX_ENCODER_PINS_ABC_RIGHT;
+        #define NUMBER_OF_ENCODERS (sizeof(matrix_encoders_pins_right)/ sizeof(*matrix_encoders_pins_right))
+        #define encoder_transport_enable
+    #endif
 #endif
 
 #if defined(USE_I2C)
@@ -32,7 +39,7 @@ typedef struct _I2C_slave_buffer_t {
 #    if defined(RGBLIGHT_ENABLE) && defined(RGBLIGHT_SPLIT)
     rgblight_syncinfo_t rgblight_sync;
 #    endif
-#    ifdef ENCODER_ENABLE
+#    ifdef encoder_transport_enable
     uint8_t encoder_state[NUMBER_OF_ENCODERS];
 #    endif
 #    ifdef WPM_ENABLE
@@ -78,7 +85,7 @@ bool transport_master(matrix_row_t matrix[]) {
     }
 #    endif
 
-#    ifdef ENCODER_ENABLE
+#    if defined(encoder_transport_enable)
     i2c_readReg(SLAVE_I2C_ADDRESS, I2C_ENCODER_START, (void *)i2c_buffer->encoder_state, sizeof(i2c_buffer->encoder_state), TIMEOUT);
     encoder_update_raw(i2c_buffer->encoder_state);
 #    endif
@@ -111,7 +118,7 @@ void transport_slave(matrix_row_t matrix[]) {
     }
 #    endif
 
-#    ifdef ENCODER_ENABLE
+#    if defined(encoder_transport_enable)
     encoder_state_raw(i2c_buffer->encoder_state);
 #    endif
 
@@ -132,7 +139,7 @@ typedef struct _Serial_s2m_buffer_t {
     // TODO: if MATRIX_COLS > 8 change to uint8_t packed_matrix[] for pack/unpack
     matrix_row_t smatrix[ROWS_PER_HAND];
 
-#    ifdef ENCODER_ENABLE
+#    ifdef encoder_transport_enable
     uint8_t      encoder_state[NUMBER_OF_ENCODERS];
 #    endif
 
@@ -243,7 +250,7 @@ bool transport_master(matrix_row_t matrix[]) {
     serial_m2s_buffer.backlight_level = is_backlight_enabled() ? get_backlight_level() : 0;
 #    endif
 
-#    ifdef ENCODER_ENABLE
+#    if defined(encoder_transport_enable)
     encoder_update_raw((uint8_t *)serial_s2m_buffer.encoder_state);
 #    endif
 
@@ -264,7 +271,7 @@ void transport_slave(matrix_row_t matrix[]) {
     backlight_set(serial_m2s_buffer.backlight_level);
 #    endif
 
-#    ifdef ENCODER_ENABLE
+#    if defined(encoder_transport_enable)
     encoder_state_raw((uint8_t *)serial_s2m_buffer.encoder_state);
 #    endif
 
